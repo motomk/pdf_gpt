@@ -34,7 +34,6 @@ def pdf_to_text_ocr(pdf_file):
 def process_input(pdf_file, input_text):
     # PDFファイルの読み込み
     pdf_text = pdf_to_text_ocr(pdf_file.name)
-    print(f"pdf_text:{pdf_text}")
 
     # テキストの分割
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
