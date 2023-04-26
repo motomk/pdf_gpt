@@ -1,11 +1,12 @@
 import gradio as gr
+import pytesseract
 from langchain import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
-from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
+from pdf2image import convert_from_path
 
 # 質問テンプレート
 template = """
@@ -20,14 +21,24 @@ prompt = PromptTemplate(
 )
 
 
+def pdf_to_text_ocr(pdf_file):
+    images = convert_from_path(pdf_file)
+    text = ""
+
+    for image in images:
+        text += pytesseract.image_to_string(image, lang="jpn+eng")
+
+    return text
+
+
 def process_input(pdf_file, input_text):
     # PDFファイルの読み込み
-    loader = PyPDFLoader(pdf_file.name)
-    documents = loader.load()
+    pdf_text = pdf_to_text_ocr(pdf_file.name)
+    print(f"pdf_text:{pdf_text}")
 
     # テキストの分割
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-    texts = text_splitter.split_documents(documents)
+    texts = text_splitter.create_documents([pdf_text])
 
     # 埋め込みの作成
     embeddings = OpenAIEmbeddings()
@@ -41,12 +52,8 @@ def process_input(pdf_file, input_text):
     question = input_text
     query = prompt.format(question=question)
     response = qa.run(query)
-    source = qa._get_docs(query)[0]
-    source_sentence = source.page_content
-    answer_source = source_sentence + "\n" + "source:" + source.metadata["source"] + ", page:" + str(
-        source.metadata["page"])
 
-    return response + "\n\nSource：\n" + answer_source
+    return response
 
 
 # UIコンポーネントの作成
